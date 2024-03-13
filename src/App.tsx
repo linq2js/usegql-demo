@@ -98,14 +98,22 @@ const TodoDetails = memo(() => {
   // condition query
   const todo = operations.getTodoById.todo;
 
-  const handleUpdate = async (optimistic: boolean) => {
+  const handleUpdate = async (
+    type: "pessimistic" | "optimistic" | "restore"
+  ) => {
     const title = prompt("Enter todo title", todo.title);
     if (!title) return;
-    if (optimistic) {
-      operations.write(todo, { title: title + "(optimistic)" });
+    if (type === "optimistic" || type === "restore") {
+      const restore = operations.write(todo, { title: title + "(optimistic)" });
+      if (type === "restore") {
+        alert("The todo title will be restored in 5 seconds");
+        setTimeout(restore, 5000);
+      }
     }
-    await updateTodo({ variables: { id: selectedTodoId, input: { title } } });
-    alert("DONE");
+    if (type === "pessimistic" || type === "optimistic") {
+      await updateTodo({ variables: { id: selectedTodoId, input: { title } } });
+      alert("DONE. The todo in the list updated as well");
+    }
   };
 
   return (
@@ -113,11 +121,14 @@ const TodoDetails = memo(() => {
       <h2>Todo Details</h2>
       {/* fetching todo if needed  */}
       <pre>{JSON.stringify(todo, null, 2)}</pre>
-      <button onClick={() => handleUpdate(false)}>
+      <button onClick={() => handleUpdate("pessimistic")}>
         {loading ? "Updating..." : "Change title"}
       </button>
-      <button onClick={() => handleUpdate(true)}>
+      <button onClick={() => handleUpdate("optimistic")}>
         {loading ? "Updating..." : "Change title (Optimistic)"}
+      </button>
+      <button onClick={() => handleUpdate("restore")}>
+        {loading ? "Updating..." : "Change title (Optimistic and Restore)"}
       </button>
     </>
   );

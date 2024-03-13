@@ -591,7 +591,7 @@ export const useGQL = <
 } & GraphAPI<TDefinitions> => {
   const client = useApolloClient();
   const rerender = useState({})[1];
-  const inputQueriesRef = useRef(definitions ?? {});
+  const definitionsRef = useRef(definitions ?? {});
   const [ref] = useState(() => {
     const state = {
       rendering: false,
@@ -599,7 +599,7 @@ export const useGQL = <
     };
     const api = createGraphAPI(
       client,
-      inputQueriesRef,
+      definitionsRef,
       () => state.mounted && rerender({}),
       () => state.rendering
     );
@@ -632,7 +632,7 @@ export const useGQL = <
     };
   });
   ref.state.rendering = true;
-  inputQueriesRef.current = definitions ?? {};
+  definitionsRef.current = definitions ?? {};
   ref.api.cleanup();
 
   useLayoutEffect(() => {

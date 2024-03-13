@@ -12,17 +12,24 @@ input TodoInput {
   title: String!
 }
 
+input UserInput {
+  name: String!
+}
+
 type Todo {
   id: ID!
   title: String!
   completed: Boolean!
   description: String!
   updatedOn: String!
+  createdBy: User!
 }
 
 type User {
   id: ID!
+  name: String!
   email: String!
+  reportTo: User
 }
 
 type Query {
@@ -33,28 +40,63 @@ type Query {
 
 type Mutation {
   updateTodo(id: ID!, input: TodoInput!): Todo!
+  updateUser(id: ID!, input: UserInput!): User!
 }
 `;
 
 createServer({
   routes() {
-    const handler = createGraphQLHandler(graphQLSchema, this.schema);
+    const handler = createGraphQLHandler(graphQLSchema, this.schema, {
+      context: null,
+      root: null,
+      resolvers: {
+        Todo: {
+          createdBy: (obj: any) => {
+            return this.schema
+              .all("User")
+              .models.find((x) => x.id === obj.createdByUserId);
+          },
+        },
+        User: {
+          reportTo: (obj: any) => {
+            return (
+              obj.reportToUserId &&
+              this.schema
+                .all("User")
+                .models.find((x) => x.id === obj.reportToUserId)
+            );
+          },
+        },
+      },
+    });
     this.post("/graphql", async (...args) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       return handler(...args);
     });
   },
   seeds(server) {
+    const maybeManagers: any[] = [];
+    for (let i = 0; i < 10; i++) {
+      maybeManagers.push(
+        server.create("User", {
+          email: faker.internet.email(),
+          name: faker.person.fullName(),
+          reportToUserId: maybeManagers.length
+            ? faker.helpers.arrayElement(maybeManagers)
+            : undefined,
+        } as any).id
+      );
+    }
+
+    const users = server.schema.all("User").models;
+
     for (let i = 0; i < 10; i++) {
       server.create("Todo", {
         title: faker.lorem.sentence(),
         description: faker.lorem.paragraph(),
         completed: faker.helpers.arrayElement([true, false]),
         updatedOn: faker.date.anytime().toISOString(),
-      } as any);
-
-      server.create("User", {
-        email: faker.internet.email(),
+        createdByUserId: faker.helpers.arrayElement(users).id,
       } as any);
     }
     setInterval(() => {

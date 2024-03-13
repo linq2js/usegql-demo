@@ -20,6 +20,7 @@ type Todo = {
 type User = {
   id: string;
   email: string;
+  name: string;
 };
 
 const TodoListQuery = gql`
@@ -28,6 +29,15 @@ const TodoListQuery = gql`
       id
       title
       updatedOn
+      createdBy {
+        id
+        name
+        email
+        reportTo {
+          id
+          name
+        }
+      }
     }
   }
 ` as TypedDocumentNode<{ todos: Pick<Todo, "id" | "title">[] }>;
@@ -39,6 +49,16 @@ const UpdateTodoMutation = gql`
       id
       title
       updatedOn
+    }
+  }
+`;
+
+const UpdateUserMutation = gql`
+  mutation UpdateUserMutation($id: ID!, $input: UserInput!) {
+    updateUser(id: $id, input: $input) {
+      # To ensure data synchronization between entities, it is essential to select the "id" field when using Apollo Client.
+      id
+      name
     }
   }
 `;
@@ -65,16 +85,31 @@ const UserListQuery = gql`
     users {
       id
       email
+      name
     }
   }
 ` as TypedDocumentNode<{ users: User[] }>;
 
 const UserList = memo(() => {
   const { userList } = useGQL({ userList: typed(UserListQuery) });
+  const [updateUser, { loading }] = useMutation(UpdateUserMutation);
+  const handleUpdate = (user: User) => {
+    if (loading) return;
+    const name = prompt("Enter new user name", user.name);
+    if (!name) return;
+    updateUser({ variables: { id: user.id, input: { name } } });
+  };
+
   return (
     <>
       <h2>User List</h2>
-      <pre>{JSON.stringify(userList, null, 2)}</pre>
+      {userList.users.map((user) => {
+        return (
+          <pre onClick={() => handleUpdate(user)} key={user.id}>
+            {JSON.stringify(user, null, 2)}
+          </pre>
+        );
+      })}
     </>
   );
 });
